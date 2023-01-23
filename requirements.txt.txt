@@ -1,0 +1,6 @@
+python-rtmidi
+pychord
+mediapipe
+pygame
+rtmidi
+numpy
