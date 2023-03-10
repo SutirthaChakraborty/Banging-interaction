@@ -13,7 +13,7 @@ pygame.mixer.init()
 
 import numpy as np
 def distance2D(a,b):
-    dist = np.linalg.norm(np.array(a)*1000-np.array(b)*1000)
+    dist = np.linalg.norm(np.array(a)-np.array(b))
     return dist
 
 # distance2D(Lwrist,lastLWrist)
@@ -32,23 +32,23 @@ my_sound.set_volume(0.5)
 
 import threading
 from playsound import playsound
-def kick(vol=1):
+def kick(vol=0):
     my_sound = pygame.mixer.Sound('sound/snare.wav')
     my_sound.set_volume(vol)
     my_sound.play()
     
     
-def snare(vol=1):   
+def snare(vol=0):   
     my_sound = pygame.mixer.Sound('sound/hihat.wav')
     my_sound.set_volume(vol)
     my_sound.play()
     
-def cymbal(vol=1): 
+def cymbal(vol=0): 
     my_sound = pygame.mixer.Sound('sound/cymbal.wav')
     my_sound.set_volume(vol)
     my_sound.play()
     
-def hihat(vol=1):   
+def hihat(vol=0):   
     my_sound = pygame.mixer.Sound('sound/kick.wav')
     my_sound.set_volume(vol)
     my_sound.play()
@@ -98,6 +98,11 @@ except socket.error as e:
     print(str(e))
 
 
+speedBuffer = [0]*400
+maxSpeed=minSpeed =0
+LindexFingerPrev =[(0,0)]
+RindexFingerPrev =[(0,0)]
+    
 close=True
 while close:
     Response = int(ClientSocket.recv(1024).decode('utf-8'))
@@ -126,8 +131,8 @@ while close:
                 try:
                     if results.pose_landmarks:
 
-                        RindexFingure= [int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_INDEX].x*xscale), int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_INDEX].y*yscale)]
-                        LindexFingure= [int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark. LEFT_INDEX].x*xscale), int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_INDEX].y*yscale)]
+                        RindexFinger= [int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_INDEX].x*xscale), int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_INDEX].y*yscale)]
+                        LindexFinger= [int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark. LEFT_INDEX].x*xscale), int(results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_INDEX].y*yscale)]
 
                         Ref1=[int((results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_HIP].x*xscale+results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_HIP].x*xscale)/2),  
                               int((results.pose_landmarks.landmark[mp_holistic.PoseLandmark.LEFT_HIP].y*yscale+results.pose_landmarks.landmark[mp_holistic.PoseLandmark.RIGHT_HIP].y*yscale)/2)]
@@ -142,111 +147,126 @@ while close:
                         box3 = box(Ref1[0]-size+50,Ref1[1]-size    , Ref1[0]+size+50, Ref1[1]+size)
                         box4 = box(Ref1[0]-size+150,Ref1[1]-50-size, Ref1[0]+size+150, Ref1[1]-50+size)
 
+                        RDist=int(distance2D(RindexFingerPrev,RindexFinger))
+                        LDist=int(distance2D(LindexFingerPrev,LindexFinger))
+                        
+                        speedBuffer.append(RDist)
+                        speedBuffer.append(LDist)
+                        speedBuffer=speedBuffer[2:]
+                        maxSpeed=max(speedBuffer)
+                        minSpeed=min(speedBuffer)
+                        volR = (RDist - minSpeed) / (maxSpeed - minSpeed)
+                        volL = (LDist - minSpeed) / (maxSpeed - minSpeed)
+                        
+#                         LindexFingerBuffer.append(distance2D(LindexFinger,LindexFingerPrev))
+#                         RindexFingerBuffer.append(distance2D(RindexFinger,RindexFingerPrev))
 
 
                         # LEFT HAND
 
-                        if box1.contains(Point(LindexFingure[0],LindexFingure[1]))   and lHand!=1:
+                        if box1.contains(Point(LindexFinger[0],LindexFinger[1]))   and lHand!=1:
                             lHand=1
-                            hihat()
-                            ClientSocket.send(str.encode(str(pmessage1)))
-                            message1=status+"D "+kit[0]+" 100"
-                            pmessage1=status+"D "+kit[0]+" 0"
-                            ClientSocket.send(str.encode(str(message1)))
+                            hihat(volL)
+#                             ClientSocket.send(str.encode(str(pmessage1)))
+#                             message1=status+"D "+kit[0]+" 100"
+#                             pmessage1=status+"D "+kit[0]+" 0"
+#                             ClientSocket.send(str.encode(str(message1)))
                             
-                        elif box2.contains(Point(LindexFingure[0],LindexFingure[1])) and lHand!=2:
+                        elif box2.contains(Point(LindexFinger[0],LindexFinger[1])) and lHand!=2:
                             lHand=2
-                            cymbal()
-                            ClientSocket.send(str.encode(str(pmessage1)))
-                            message1=status+"D "+kit[1]+" 100"
-                            pmessage1=status+"D "+kit[1]+" 0"
-                            ClientSocket.send(str.encode(str(message1)))
+                            cymbal(volL)
+#                             ClientSocket.send(str.encode(str(pmessage1)))
+#                             message1=status+"D "+kit[1]+" 100"
+#                             pmessage1=status+"D "+kit[1]+" 0"
+#                             ClientSocket.send(str.encode(str(message1)))
                             
-                        elif box3.contains(Point(LindexFingure[0],LindexFingure[1])) and lHand!=3:
+                        elif box3.contains(Point(LindexFinger[0],LindexFinger[1])) and lHand!=3:
                             lHand=3
-                            snare()
-                            ClientSocket.send(str.encode(str(pmessage1)))
-                            message1=status+"D "+kit[2]+" 100"
-                            pmessage1=status+"D "+kit[2]+" 0"
-                            ClientSocket.send(str.encode(str(message1)))
+                            snare(volL)
+#                             ClientSocket.send(str.encode(str(pmessage1)))
+#                             message1=status+"D "+kit[2]+" 100"
+#                             pmessage1=status+"D "+kit[2]+" 0"
+#                             ClientSocket.send(str.encode(str(message1)))
                             
-                        elif box4.contains(Point(LindexFingure[0],LindexFingure[1])) and lHand!=4:
+                        elif box4.contains(Point(LindexFinger[0],LindexFinger[1])) and lHand!=4:
                             lHand=4
-                            kick()
-                            ClientSocket.send(str.encode(str(pmessage1)))
-                            message1=status+"D "+kit[3]+" 100"
-                            pmessage1=status+"D "+kit[3]+" 0"
-                            ClientSocket.send(str.encode(str(message1)))
+                            kick(volL)
+#                             ClientSocket.send(str.encode(str(pmessage1)))
+#                             message1=status+"D "+kit[3]+" 100"
+#                             pmessage1=status+"D "+kit[3]+" 0"
+#                             ClientSocket.send(str.encode(str(message1)))
                             
-                        elif box1.contains(Point(LindexFingure[0],LindexFingure[1]))==False and box2.contains(Point(LindexFingure[0],LindexFingure[1]))==False and box3.contains(Point(LindexFingure[0],LindexFingure[1]))==False  and box4.contains(Point(LindexFingure[0],LindexFingure[1]))==False:
+                        elif box1.contains(Point(LindexFinger[0],LindexFinger[1]))==False and box2.contains(Point(LindexFinger[0],LindexFinger[1]))==False and box3.contains(Point(LindexFinger[0],LindexFinger[1]))==False  and box4.contains(Point(LindexFinger[0],LindexFinger[1]))==False:
                             lHand=0
                             
 
 
                         # RIGHT HAND
 
-                        if box1.contains(Point(RindexFingure[0],RindexFingure[1]))   and rHand!=1:
+                        if box1.contains(Point(RindexFinger[0],RindexFinger[1]))   and rHand!=1:
                             rHand=1
-                            hihat()
-                            ClientSocket.send(str.encode(str(pmessage2)))
-                            message2=status+"D "+kit[0]+" 100"
-                            pmessage2=status+"D "+kit[0]+" 0"
-                            ClientSocket.send(str.encode(str(message2)))
+                            hihat(volR)
+#                             ClientSocket.send(str.encode(str(pmessage2)))
+#                             message2=status+"D "+kit[0]+" 100"
+#                             pmessage2=status+"D "+kit[0]+" 0"
+#                             ClientSocket.send(str.encode(str(message2)))
 
-                        elif box2.contains(Point(RindexFingure[0],RindexFingure[1])) and rHand!=2: 
+                        elif box2.contains(Point(RindexFinger[0],RindexFinger[1])) and rHand!=2: 
                             rHand=2
-                            cymbal()
-                            ClientSocket.send(str.encode(str(pmessage2)))
-                            message2=status+"D "+kit[1]+" 100"
-                            pmessage2=status+"D "+kit[1]+" 0"
-                            ClientSocket.send(str.encode(str(message2)))
+                            cymbal(volR)
+#                             ClientSocket.send(str.encode(str(pmessage2)))
+#                             message2=status+"D "+kit[1]+" 100"
+#                             pmessage2=status+"D "+kit[1]+" 0"
+#                             ClientSocket.send(str.encode(str(message2)))
 
-                        elif box3.contains(Point(RindexFingure[0],RindexFingure[1])) and rHand!=3:
+                        elif box3.contains(Point(RindexFinger[0],RindexFinger[1])) and rHand!=3:
                             rHand=3
-                            snare()
-                            ClientSocket.send(str.encode(str(pmessage2)))
-                            message2=status+"D "+kit[2]+" 100"
-                            pmessage2=status+"D "+kit[2]+" 0"
-                            ClientSocket.send(str.encode(str(message2)))
+                            snare(volR)
+#                             ClientSocket.send(str.encode(str(pmessage2)))
+#                             message2=status+"D "+kit[2]+" 100"
+#                             pmessage2=status+"D "+kit[2]+" 0"
+#                             ClientSocket.send(str.encode(str(message2)))
 
-                        elif box4.contains(Point(RindexFingure[0],RindexFingure[1])) and rHand!=4:
+                        elif box4.contains(Point(RindexFinger[0],RindexFinger[1])) and rHand!=4:
                             rHand=4
-                            kick()
-                            ClientSocket.send(str.encode(str(pmessage2)))
-                            message2=status+"D "+kit[3]+" 100"
-                            pmessage2=status+"D "+kit[3]+" 0"
-                            ClientSocket.send(str.encode(str(message2)))
+                            kick(volR)
+#                             ClientSocket.send(str.encode(str(pmessage2)))
+#                             message2=status+"D "+kit[3]+" 100"
+#                             pmessage2=status+"D "+kit[3]+" 0"
+#                             ClientSocket.send(str.encode(str(message2)))
 
-                        elif box1.contains(Point(RindexFingure[0],RindexFingure[1])) == False and  box2.contains(Point(RindexFingure[0],RindexFingure[1]))==False and box3.contains(Point(RindexFingure[0],RindexFingure[1]))==False and box4.contains(Point(RindexFingure[0],RindexFingure[1]))==False:
+                        elif box1.contains(Point(RindexFinger[0],RindexFinger[1])) == False and  box2.contains(Point(RindexFinger[0],RindexFinger[1]))==False and box3.contains(Point(RindexFinger[0],RindexFinger[1]))==False and box4.contains(Point(RindexFinger[0],RindexFinger[1]))==False:
                             rHand=0
                             
-                            
 
-                        cv2.putText(background, str(rHand) , 
-                                               tuple(np.multiply(RindexFingure, [1, 1]).astype(int)), 
+
+#                         cv2.putText(background, str(rHand) , 
+#                                                tuple(np.multiply(RindexFinger, [1, 1]).astype(int)), 
+#                                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+#                         cv2.putText(background, str(lHand) , 
+#                                                tuple(np.multiply(LindexFinger, [1, 1]).astype(int)), 
+#                                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+                        cv2.putText(background, str(int(distance2D(LindexFingerPrev,LindexFinger))) , 
+                                               tuple(np.multiply(LindexFinger, [1, 1]).astype(int)), 
                                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-                        cv2.putText(background, str(lHand) , 
-                                               tuple(np.multiply(LindexFingure, [1, 1]).astype(int)), 
+                        cv2.putText(background,  str(int(distance2D(RindexFingerPrev,RindexFinger))) , 
+                                               tuple(np.multiply(RindexFinger, [1, 1]).astype(int)), 
                                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
 
-                        center_coordinates= (RindexFingure[0],RindexFingure[1])
+                        center_coordinates= (RindexFinger[0],RindexFinger[1])
                         background =cv2.circle(background, center_coordinates, radius, colorhand, thickness)
-                        center_coordinates= (LindexFingure[0],LindexFingure[1])
+                        center_coordinates= (LindexFinger[0],LindexFinger[1])
                         background =cv2.circle(background, center_coordinates, radius, colorhand, thickness)
 
-
-                        ######### Draw face landmarks
-                        mp_drawing.draw_landmarks(background, results.face_landmarks, mp_holistic.FACE_CONNECTIONS)
-                        ##########Right hand
-                        mp_drawing.draw_landmarks(background, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
-                        ########## Left Hand
-                        mp_drawing.draw_landmarks(background, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
-                        ########## Pose Detections
-                        mp_drawing.draw_landmarks(background, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
+                        LindexFingerPrev=LindexFinger
+                        RindexFingerPrev=RindexFinger
 
                 except Exception as e: 
+                    print(traceback.format_exc())
                     print(e)   
 
                 cv2.imshow('DrumClient',background)
