@@ -1,69 +1,64 @@
-import socket
-import threading
-import time
-import traceback
-
 import cv2
 import mediapipe as mp
 import numpy as np
-import pygame
-from playsound import playsound
 from shapely import geometry
+import threading
+import pygame
+import socket
+import traceback
 from shapely.geometry import Point, box
+import time
 
 pygame.mixer.init()
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
 
 
+def load_sound(filename):
+    sound = pygame.mixer.Sound(filename)
+    sound.set_volume(0.5)
+    return sound
+
+
+def play_sound(sound, volume=0.5):
+    sound.set_volume(volume)
+    sound.play()
+
+
 def distance2D(a, b):
-    dist = np.linalg.norm(np.array(a) - np.array(b))
-    return dist
+    return np.linalg.norm(np.array(a) - np.array(b))
 
 
-# distance2D(Lwrist,lastLWrist)
+def calculate_volume(distance, min_speed, max_speed):
+    try:
+        return (distance - min_speed) / (max_speed - min_speed)
+    except:
+        return 0
 
 
 def avg(lst):
     return sum(lst) / len(lst)
 
 
-import pygame
-
-pygame.mixer.init()
-my_sound = pygame.mixer.Sound("sound/kick.wav")
-# my_sound.play()
-my_sound.set_volume(0.5)
-
-
-def kick(vol=0):
-    my_sound = pygame.mixer.Sound("sound/snare.wav")
-    my_sound.set_volume(vol)
-    my_sound.play()
+def metronome(tempo, sound):
+    beat_interval = 60.0 / tempo  # Interval in seconds
+    while True:
+        play_sound(sound)
+        time.sleep(beat_interval)
 
 
-def snare(vol=0):
-    my_sound = pygame.mixer.Sound("sound/hihat.wav")
-    my_sound.set_volume(vol)
-    my_sound.play()
+sounds = {
+    "hihat": load_sound("sound/hihat.wav"),
+    "snare": load_sound("sound/snare.wav"),
+    "cymbal": load_sound("sound/cymbal.wav"),
+    "kick": load_sound("sound/kick.wav"),
+    "click": load_sound("sound/click.wav"),
+}
 
-
-def cymbal(vol=0):
-    my_sound = pygame.mixer.Sound("sound/cymbal.wav")
-    my_sound.set_volume(vol)
-    my_sound.play()
-
-
-def hihat(vol=0):
-    my_sound = pygame.mixer.Sound("sound/kick.wav")
-    my_sound.set_volume(vol)
-    my_sound.play()
-
-
-def click(vol=0):
-    my_sound = pygame.mixer.Sound("sound/click.wav")
-    my_sound.set_volume(vol)
-    my_sound.play()
+# Set up the metronome thread. We start with a default tempo of BPM.
+BPM = 100
+metronome_thread = threading.Thread(target=metronome, args=(BPM, sounds["click"]))
+metronome_thread.start()
 
 
 color1 = (150, 150, 0)
@@ -245,7 +240,9 @@ while close:
                         )
 
                         RDist = int(distance2D(RindexFingerPrev, RindexFinger))
+                        # Calculate distance and volume
                         LDist = int(distance2D(LindexFingerPrev, LindexFinger))
+                        volL = calculate_volume(LDist, minSpeed, maxSpeed)
 
                         speedBuffer.append(RDist)
                         speedBuffer.append(LDist)
@@ -254,52 +251,35 @@ while close:
                         minSpeed = min(speedBuffer)
                         volR = (RDist - minSpeed) / (maxSpeed - minSpeed)
                         volL = (LDist - minSpeed) / (maxSpeed - minSpeed)
-
                         # LEFT HAND
-
                         if (
                             box1.contains(Point(LindexFinger[0], LindexFinger[1]))
                             and lHand != 1
                         ):
                             lHand = 1
-                            hihat(volL)
-                        #                             ClientSocket.send(str.encode(str(pmessage1)))
-                        #                             message1=status+"D "+kit[0]+" 100"
-                        #                             pmessage1=status+"D "+kit[0]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message1)))
-
+                            play_sound(sounds["hihat"], volL)
                         elif (
                             box2.contains(Point(LindexFinger[0], LindexFinger[1]))
                             and lHand != 2
                         ):
                             lHand = 2
-                            cymbal(volL)
-                        #                             ClientSocket.send(str.encode(str(pmessage1)))
-                        #                             message1=status+"D "+kit[1]+" 100"
-                        #                             pmessage1=status+"D "+kit[1]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message1)))
+                            play_sound(sounds["cymbal"], volL)
 
                         elif (
                             box3.contains(Point(LindexFinger[0], LindexFinger[1]))
                             and lHand != 3
                         ):
                             lHand = 3
-                            snare(volL)
-                        #                             ClientSocket.send(str.encode(str(pmessage1)))
-                        #                             message1=status+"D "+kit[2]+" 100"
-                        #                             pmessage1=status+"D "+kit[2]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message1)))
+                            play_sound(sounds["snare"], volL)
+                            # snare(volL)
 
                         elif (
                             box4.contains(Point(LindexFinger[0], LindexFinger[1]))
                             and lHand != 4
                         ):
                             lHand = 4
-                            kick(volL)
-                        #                             ClientSocket.send(str.encode(str(pmessage1)))
-                        #                             message1=status+"D "+kit[3]+" 100"
-                        #                             pmessage1=status+"D "+kit[3]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message1)))
+                            play_sound(sounds["kick"], volL)
+                            # kick(volL)
 
                         elif (
                             box1.contains(Point(LindexFinger[0], LindexFinger[1]))
@@ -320,44 +300,28 @@ while close:
                             and rHand != 1
                         ):
                             rHand = 1
-                            hihat(volR)
-                        #                             ClientSocket.send(str.encode(str(pmessage2)))
-                        #                             message2=status+"D "+kit[0]+" 100"
-                        #                             pmessage2=status+"D "+kit[0]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message2)))
+                            play_sound(sounds["hihat"], volR)
 
                         elif (
                             box2.contains(Point(RindexFinger[0], RindexFinger[1]))
                             and rHand != 2
                         ):
                             rHand = 2
-                            cymbal(volR)
-                        #                             ClientSocket.send(str.encode(str(pmessage2)))
-                        #                             message2=status+"D "+kit[1]+" 100"
-                        #                             pmessage2=status+"D "+kit[1]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message2)))
+                            play_sound(sounds["cymbal"], volR)
 
                         elif (
                             box3.contains(Point(RindexFinger[0], RindexFinger[1]))
                             and rHand != 3
                         ):
                             rHand = 3
-                            snare(volR)
-                        #                             ClientSocket.send(str.encode(str(pmessage2)))
-                        #                             message2=status+"D "+kit[2]+" 100"
-                        #                             pmessage2=status+"D "+kit[2]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message2)))
+                            play_sound(sounds["snare"], volR)
 
                         elif (
                             box4.contains(Point(RindexFinger[0], RindexFinger[1]))
                             and rHand != 4
                         ):
                             rHand = 4
-                            kick(volR)
-                        #                             ClientSocket.send(str.encode(str(pmessage2)))
-                        #                             message2=status+"D "+kit[3]+" 100"
-                        #                             pmessage2=status+"D "+kit[3]+" 0"
-                        #                             ClientSocket.send(str.encode(str(message2)))
+                            play_sound(sounds["kick"], volR)
 
                         elif (
                             box1.contains(Point(RindexFinger[0], RindexFinger[1]))
